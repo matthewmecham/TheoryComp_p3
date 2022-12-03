@@ -5,54 +5,32 @@ import fa.nfa.NFA;
 public class RE implements re.REInterface {
 
     private String inputString;
+    private NFA nfa;
 
     public RE(String inputString) {
         this.inputString = inputString;
+        nfa = new NFA();
     }
 
-    //Maybe needed.... Not quite sure at this point to be honest
-    //Probably needed
-    class Choice extends NFA {
-        private NFA thisOne;
-        private NFA thatOne;
+    private NFA choice(NFA thisOne, NFA thatOne) {
 
-        public Choice(NFA thisOne, NFA thatOne) {
-            this.thisOne = thisOne;
-            this.thatOne = thatOne;
-        }
-    };
-
-    //Also maybe need. This might be the tree aspect though, and instead
-    //will need to build NFA node relationships with these
-    class Sequence extends NFA {
-        private NFA first;
-        private NFA second;
-
-        public Sequence (NFA first, NFA second) {
-            this.first = first;
-            this.second = second;
-        }
+        return nfa;
     }
 
-    //Represents empty regex
-    //Maybe need? I dunno
-    class Blank extends NFA {
+    private NFA sequence(NFA first, NFA second) {
+
+        return nfa;
     }
 
-    class Repetition extends NFA {
-        private NFA internal;
+    private NFA repetition(NFA internal) {
 
-        public Repetition(NFA internal) {
-            this.internal = internal;
-        }
+        return nfa;
     }
 
-    class Primitive extends NFA {
-        private char c;
+    private NFA primitive(char c)
+    {
 
-        public Primitive(char c) {
-            this.c = c;
-        }
+        return nfa;
     }
 
     public NFA getNFA() {
@@ -66,7 +44,7 @@ public class RE implements re.REInterface {
         if (more() && peek() == '|') {
             eat('|');
             NFA regexNFA = regex();
-            return new Choice(termNFA, regexNFA);
+            return choice(termNFA, regexNFA);
         } else {
             return termNFA;
         }
@@ -80,7 +58,7 @@ public class RE implements re.REInterface {
 
         while (more() && peek() != ')' && peek() != '|') {
             NFA nextFactorNFA = factor();
-            factorNFA = new Sequence(factorNFA, nextFactorNFA);
+            factorNFA = sequence(factorNFA, nextFactorNFA);
         }
         return factorNFA;
     }
@@ -90,7 +68,7 @@ public class RE implements re.REInterface {
 
         while (more() && peek() == '*') {
             eat('*');
-            baseNFA = new Repetition(baseNFA);
+            baseNFA = repetition(baseNFA);
         }
         return baseNFA;
     }
@@ -105,7 +83,7 @@ public class RE implements re.REInterface {
                 return ret;
 
             default:
-                return new Primitive(next());
+                return primitive(next());
         }
     }
 
