@@ -35,6 +35,8 @@ public class REDriver {
 					NFA nfa = re.getNFA();
 					//now process the strings
 					DFA dfa = nfa.getDFA();
+					System.out.println(nfa);
+					System.out.println(dfa);
 					while(scan.hasNext()){
 						boolean accept = dfa.accepts(scan.nextLine());
 						System.out.println(accept?"yes":"no");

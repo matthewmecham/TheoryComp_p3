@@ -1,6 +1,10 @@
 package re;
 
+import fa.State;
 import fa.nfa.NFA;
+import fa.nfa.NFAState;
+
+import java.util.*;
 
 // Our alphabet: { a, b }
 // General CFG for this regex
@@ -15,35 +19,62 @@ import fa.nfa.NFA;
 public class RE implements re.REInterface {
 
     private String inputString;
-    private NFA nfa;
+    private String stateName;
+    private int stateNum;
 
     public RE(String inputString) {
+        Set<Character> abc = new LinkedHashSet<Character>();
         this.inputString = inputString;
-        nfa = new NFA();
+        this.stateName = "q";
+        this.stateNum = 0;
     }
 
     //TODO: Method needs to account for a '|" situation
-    // Needs to appropriately call NFA class methods to create
-    // a state that has an OR transition, basically. I am not
-    // positive on parameter types
     private NFA choice(NFA thisOne, NFA thatOne) {
+        NFA resultNFA = new NFA();
 
-        return nfa;
+        for(State f : thisOne.getFinalStates())
+        {
+        }
+        return resultNFA;
     }
 
-    //TODO: Method needs to account for when when first state leads to just another
-    // Possibly like, aabb.. Might go something like 0 -a-> 1 -a-> 2 or something like that
-    // Not sure atm if a sequence is also something like (a|b)a where (a|b) is "first" and
-    // a is "second"... Probably, though?
+    //TODO: Javadoc this sucka
     private NFA sequence(NFA first, NFA second) {
+        NFA resultNFA = new NFA();
+        resultNFA.addNFAStates(first.getStates());
+        resultNFA.addNFAStates(second.getStates());
+        //make e transitions from first final states to what was the second start state
+        //This is acting as concatenation between two NFAs
+        for (State f: first.getFinalStates()) {
+            resultNFA.addTransition(f.getName(), 'e', second.getStartState().getName());
+        }
 
-        return nfa;
+        //Now clear the final state status from the states grabbed from first
+        for(State f: first.getFinalStates())
+            for(State s: resultNFA.getFinalStates())
+            {
+                if(f.getName() == s.getName())
+                {
+                    ((NFAState)s).setNonFinal();
+                }
+            }
+        //Now make sure resultNFA start state is the right one:
+        resultNFA.addStartState(first.getStartState().getName());
+
+        return resultNFA;
     }
 
-    //TODO: Method needs to account for '*' case
+    //TODO: JavaDoc this sucka
     private NFA repetition(NFA internal) {
 
-        return nfa;
+        for(State f : internal.getFinalStates())
+        {
+            internal.addTransition(f.getName() , 'e', internal.getStartState().getName());
+            internal.addTransition(internal.getStartState().getName(), 'e', f.getName());
+        }
+
+        return internal;
     }
 
     //TODO: The linked algorithm has this and not quite sure what to do with it.
@@ -51,13 +82,24 @@ public class RE implements re.REInterface {
     // or the recursive parse.
     private NFA primitive(char c)
     {
-
-        return nfa;
+        NFA resultNFA = new NFA();
+        int first;
+        int second;
+        first = stateNum;
+        resultNFA.addStartState(stateName + stateNum++);
+        second = stateNum;
+        resultNFA.addFinalState(stateName + stateNum++);
+        resultNFA.addTransition(stateName + first, c, stateName + second);
+        return resultNFA;
     }
 
     public NFA getNFA() {
-        NFA ret = regex();
-        return ret;
+        NFA resultNFA = regex();
+        Set<Character> alphabet = new HashSet<Character>();
+        alphabet.add('a');
+        alphabet.add('b');
+        resultNFA.addAbc(alphabet);
+        return resultNFA;
     }
 
     //The lead terminal of our CFG
@@ -78,11 +120,13 @@ public class RE implements re.REInterface {
     // Next level of CFG:
     // term:    { factor } "Possibly empty sequence of factors"
     private NFA term() {
-        NFA factorNFA = null; //Since it could possibly be empty? Not sure about this one
+        NFA factorNFA = new NFA(); //Since it could possibly be empty? Not sure about this one
+        factorNFA.addStartState(stateName + stateNum++);
+        ((NFAState)factorNFA.getStartState()).setFinal();
 
         while (more() && peek() != ')' && peek() != '|') {
             NFA nextFactorNFA = factor();
-            factorNFA = sequence(factorNFA, nextFactorNFA);
+            factorNFA = sequence(factorNFA, nextFactorNFA); //I believe a good place to add transitions
         }
         return factorNFA;
     }
