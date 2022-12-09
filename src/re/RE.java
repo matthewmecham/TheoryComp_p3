@@ -16,6 +16,13 @@ import java.util.*;
 // base:    char
 //          | '(' regex ')'
 
+/**
+ * Matt Mecham and Gary Brusse
+ * This class converts a regex string to an NFA using a recursive descent parser
+ * While parsing the regex, this class makes a series of smaller NFAs. While returning
+ * through the recursion, these smaller NFAs are concatenated together.
+ */
+
 public class RE implements re.REInterface {
 
     private String inputString;
@@ -29,21 +36,34 @@ public class RE implements re.REInterface {
         this.stateNum = 0;
     }
 
-    //TODO: Method needs to account for a '|" situation
+
+    /**
+     * This method handles the case of '|' in our CFG
+     * @param thisOne - complete term
+     * @param thatOne - first term of regex still being parsed
+     * @return the concatenation of those two NFAs
+     */
     private NFA choice(NFA thisOne, NFA thatOne) {
         NFA resultNFA = new NFA();
-        String newFinal;
+        //New start state from which we transition to thisOne OR thatOne
         resultNFA.addStartState(stateName + stateNum++);
+        //Copy over all states
         resultNFA.addNFAStates(thisOne.getStates());
         resultNFA.addNFAStates(thatOne.getStates());
-//        newFinal = stateName + stateNum++;
-//        resultNFA.addFinalState(newFinal);
+        //The new start state has two e transitions to the start of both thisOne and thatOne
         resultNFA.addTransition(resultNFA.getStartState().getName(), 'e', thisOne.getStartState().getName());
         resultNFA.addTransition(resultNFA.getStartState().getName(), 'e', thatOne.getStartState().getName());
         return resultNFA;
     }
 
-    //TODO: Javadoc this sucka
+    /**
+     * This method handles the case of sequential NFAs
+     * For example ab: The NFA representing a gets concatenated with the
+     * NFA representing b
+     * @param first - first NFA in a sequence
+     * @param second - second NFA in a sequence
+     * @return the concatenation of the two NFAs
+     */
     private NFA sequence(NFA first, NFA second) {
         NFA resultNFA = new NFA();
         resultNFA.addNFAStates(first.getStates());
@@ -69,9 +89,15 @@ public class RE implements re.REInterface {
         return resultNFA;
     }
 
-    //TODO: JavaDoc this sucka
+    /**
+     * Handles the case '*' in our CFG
+     * @param internal - the NFA that needs to be repeated 0 or more times
+     * @return the NFA with e transitions from start to final and from final to start
+     */
     private NFA repetition(NFA internal) {
 
+        //create e transtions from the final state back to the start and from the
+        //start state to the final
         for(State f : internal.getFinalStates())
         {
             internal.addTransition(f.getName() , 'e', internal.getStartState().getName());
@@ -81,9 +107,11 @@ public class RE implements re.REInterface {
         return internal;
     }
 
-    //TODO: The linked algorithm has this and not quite sure what to do with it.
-    // Perhaps how we know the name of the transition. This is the most basic piece
-    // or the recursive parse.
+    /**
+     * Handles the most basic case, a single transition
+     * @param c - the char on which we transition
+     * @return the most simple NFA: start -- c --> final
+     */
     private NFA primitive(char c)
     {
         NFA resultNFA = new NFA();
@@ -97,8 +125,13 @@ public class RE implements re.REInterface {
         return resultNFA;
     }
 
+    /**
+     * The client call to convert the Regex to an NFA
+     * @return an NFA representing the Regex
+     */
     public NFA getNFA() {
-        NFA resultNFA = regex();
+        NFA resultNFA = regex(); //recursive descent call
+        //Populate NFA params
         Set<Character> alphabet = new HashSet<Character>();
         alphabet.add('a');
         alphabet.add('b');
@@ -106,31 +139,39 @@ public class RE implements re.REInterface {
         return resultNFA;
     }
 
-    //The lead terminal of our CFG
+    //The lead nonterminal of our CFG
     //Regex:    term '|' regex
     //          | term
+    /**
+     * Parses first LHS nonterminal - handles OR
+     * @return a termNFA
+     */
     private NFA regex() {
         NFA termNFA = term();
 
-        if (more() && peek() == '|') {
+        if (more() && peek() == '|') { //See a '|' need to hand OR case
             eat('|');
             NFA regexNFA = regex();
             return choice(termNFA, regexNFA);
         } else {
-            return termNFA;
+            return termNFA; //else plain ol term
         }
     }
 
     // Next level of CFG:
     // term:    { factor } "Possibly empty sequence of factors"
+    /**
+     * Parses second nonterminal - accounts for sequences
+     * @return a factorNFA
+     */
     private NFA term() {
         NFA factorNFA = new NFA(); //Since it could possibly be empty? Not sure about this one
         factorNFA.addStartState(stateName + stateNum++);
         ((NFAState)factorNFA.getStartState()).setFinal();
 
-        while (more() && peek() != ')' && peek() != '|') {
+        while (more() && peek() != ')' && peek() != '|') { //if no funny business - make plain ol sequence
             NFA nextFactorNFA = factor();
-            factorNFA = sequence(factorNFA, nextFactorNFA); //I believe a good place to add transitions
+            factorNFA = sequence(factorNFA, nextFactorNFA);
         }
         return factorNFA;
     }
@@ -138,10 +179,14 @@ public class RE implements re.REInterface {
     // Next level of CFG:
     // factor:  base '*'
     //          | base
+    /**
+     * Parses factor nonterminal - accounts for repetition
+     * @return baseNFA
+     */
     private NFA factor() {
         NFA baseNFA = base();
 
-        while (more() && peek() == '*') {
+        while (more() && peek() == '*') { //if see *, need to repeat NFA
             eat('*');
             baseNFA = repetition(baseNFA);
         }
@@ -151,6 +196,11 @@ public class RE implements re.REInterface {
     // Final level of CFG:
     // base:    char
     //          | '(' regex ')'
+    /**
+     * Parses final level of CFG - either primitive or a
+     * parenthesized regex
+     * @return a primitive or another regex
+     */
     private NFA base() {
 
         switch (peek()) {
