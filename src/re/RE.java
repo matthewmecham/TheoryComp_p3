@@ -32,10 +32,14 @@ public class RE implements re.REInterface {
     //TODO: Method needs to account for a '|" situation
     private NFA choice(NFA thisOne, NFA thatOne) {
         NFA resultNFA = new NFA();
-
-        for(State f : thisOne.getFinalStates())
-        {
-        }
+        String newFinal;
+        resultNFA.addStartState(stateName + stateNum++);
+        resultNFA.addNFAStates(thisOne.getStates());
+        resultNFA.addNFAStates(thatOne.getStates());
+//        newFinal = stateName + stateNum++;
+//        resultNFA.addFinalState(newFinal);
+        resultNFA.addTransition(resultNFA.getStartState().getName(), 'e', thisOne.getStartState().getName());
+        resultNFA.addTransition(resultNFA.getStartState().getName(), 'e', thatOne.getStartState().getName());
         return resultNFA;
     }
 
